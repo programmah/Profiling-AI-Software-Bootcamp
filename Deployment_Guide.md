@@ -1,75 +1,123 @@
 # Profiling AI Software Bootcamp
 
-## Prerequisites
-
-To run this bootcamp you will need a machine with NVIDIA GPUs. The profiling tools require:
-
-- **GPU**: NVIDIA GPUs with Ampere architecture and above (SM 80+) for Nsight Systems and Nsight Compute.
-- **Container Runtime**: Install [Docker](https://docs.docker.com/get-docker/) or [Singularity](https://sylabs.io/docs/)
-- **NVIDIA Toolkit**: Install NVIDIA toolkit, [Nsight Systems](https://developer.nvidia.com/nsight-systems).
-- **NGC Account**: Building the base container image requires users to create a [NGC account and generate an API key](https://docs.nvidia.com/ngc/ngc-catalog-user-guide/index.html#registering-activating-ngc-account).
-- **Linux Machine**: Ubuntu Operating System.
-
-## Tested Environment
-
-We tested and ran all labs on a DGX machine equipped with A100 and H100 GPUs.
+The Profiling AI Software Bootcamp covers the process and tools for profiling AI and machine learning applications to fully utilize high-performance systems. Attendees will learn to profile applications using NVIDIA Nsight™ Systems, a system-wide performance analysis tool; analyze and identify optimization opportunities; and improve application performance to scale efficiently across systems of any size and number of CPUs and GPUs. Additionally, this bootcamp will walk through the system topology to learn the dynamics of FP8 precision, multi-GPU, and multi-node connections and architecture.
 
 ## Deploying the Labs
 
-You can deploy this material Docker containers. Please refer to the respective sections for the instructions.
+### Prerequisites
 
-### Running Docker Container
-To run the labs, you will need access to a single GPU. Build a Docker container by following these steps:
+To run this tutorial, you will need a DGX machine with a minimum of NVIDIA Hopper GPU Architecture (H100).
 
-1. Open a terminal window and navigate to the directory where the Dockerfile is located (e.g., `cd ~/Profiling-AI-Software-Bootcamp`)
+- You need a Linux Machine.
+- Install latest [Miniconda](https://www.anaconda.com/docs/getting-started/miniconda/install/linux-install). 
+- Install the latest [Docker](https://docs.docker.com/engine/install/) or [Singularity](https://sylabs.io/docs/).
+- Install NVIDIA [Nsight Systems](https://developer.nvidia.com/nsight-systems).
 
-2. To build the docker container, run:
+
+### Tested environment
+
+We tested and ran all labs on a DGX machine equipped with a H100 GPUs (80GB).
+
+
+### Deploying with conda (Lab 1, 2, & 3)
+
+#### Creating and running on conda env
+
 ```bash
-sudo docker build -t aiprofiler-jupyter:latest .
+
+#create conda env
+
+conda create -n env_profiler python=3.12
+
+#activate the env
+
+conda activate env_profiler
+
+# Install the dependencies.
+
+cd ~/Profiling-AI-Software-Bootcamp
+
+pip install -r requirements.txt
+
+#running the Jupyter Notebook
+
+jupyter-lab --no-browser --allow-root --ip=0.0.0.0 --port=8888 --NotebookApp.token="" --notebook-dir=./workspace
+
 ```
 
-3. To run the built container:
+ 
+### Deploying with container (Lab 4)
+
+You can deploy this material using Conda, Docker or Apptainer containers. Please refer to the respective sections for the instructions.
+
+
+#### Running Docker Container 
+
+To run the Labs, you will need access to 2 nodes(at least 4 GPUs per node). Build a Docker container by following these steps:  
+
+- Open a terminal window and navigate to the directory where `Dockerfile` file is located (`cd ~/Profiling-AI-Software-Bootcamp`)
+- To build the docker container, run : `sudo docker build -f Dockerfile --network=host -t <imagename>:<tagnumber> .`, for instance: 
+
+
 ```bash
-docker run -it --gpus "all" \
-    -p 8888:8888 --rm \
-    -v /path/to/Profiling-AI-Software-Bootcamp:/workspace-aiprofiler \
-    aiprofiler-jupyter:latest
+
+sudo docker build -f Dockerfile --network=host -t tecont:v1 .
+
+```
+- To run the built container : 
+
+```bash
+
+docker run --rm -it --gpus all -p 8888:8888 --ipc=host --ulimit memlock=-1 --ulimit stack=67108864
+ -v ./workspace:/workspace tecont:v1 
+ jupyter-lab --no-browser --allow-root --ip=0.0.0.0 --port=8888 --NotebookApp.token="" --notebook-dir=/workspace
+
 ```
 
-**Flag descriptions:**
-- `--rm` cleans up temporary images created during the running of the container
-- `-it` enables interactive mode and killing the jupyter server with `ctrl-c`
-- `--gpus=all` enables all NVIDIA GPUs during container runtime
-- `-v` mounts local directories in the container filesystem
-- `-p` explicitly maps port 8888
 
-When this command is run, you can browse to the serving machine on port 8888 using any web browser to access the labs. For instance, if running on the local machine, the web browser should be pointed to http://localhost:8888.
+flags:
+- `--rm` will delete the container when finished.
+- `-it` means run in interactive mode.
+- `--gpus` option makes GPUs accessible inside the container.
+- `-v` is used to mount host directories in the container filesystem.
+- `--network=host` will share the host’s network stack to the container.
+- `-p` flag explicitly maps a single port or range of ports.
 
-4. Once inside the container, open the jupyter lab in browser: http://localhost:8888, and start the lab by clicking on the `start_here.ipynb` notebook.
 
-5. As soon as you are done with the labs, shut down jupyter lab by selecting **File > Shut Down** and exit the container by typing `exit` or pressing `ctrl + d` in the terminal window.
+Open the browser at `http://localhost:8888` and click on the `start_here.ipynb`. Go to the table of content and click on Lab 1: `Preprocessing Multi-turn Conversational Dataset`.
+As soon as you are done with the rest of the labs, shut down jupyter lab by selecting `File > Shut Down` and the container by typing `exit` or pressing `ctrl d` in the terminal window.
 
-## Troubleshooting
 
-#### Container fails to start or exits immediately
 
-Check the container logs:
-  ```bash
-  docker logs <container_id>
-  ```
-Ensure the workspace path in the `-v` flag points to the correct local directory
+#### Running Singularity Container
 
-#### Nsight Systems or Nsight Compute commands not found
 
-The tools should be pre-installed in the container. Verify installation:
-  ```bash
-  nsys --version
-  ```
+- Build the Labs Singularity container with: 
 
-For additional support, please refer to the [NVIDIA Developer Forums](https://forums.developer.nvidia.com/) or open an issue in the repository.
+```bash
 
-#### ERR_NVGPUCTRPERM: Permission Issue with GPU Performance Counters
+apptainer build --fakeroot --sandbox tecont.simg Singularity
 
-If you encounter `ERR_NVGPUCTRPERM` error when profiling, ensure the container is started with `--cap-add=SYS_ADMIN`. For a permanent solution, enable access on the host: `sudo sh -c 'echo "options nvidia NVreg_RestrictProfilingToAdminUsers=0" > /etc/modprobe.d/nvidia-profiling.conf'` then reboot. 
 
-See [NVIDIA's solutions guide](https://developer.nvidia.com/nvidia-development-tools-solutions-err_nvgpuctrperm-permission-issue-performance-counters) for details.
+```
+
+- To run the built container: 
+
+```bash
+
+singularity run --nv -B workspace:/workspace tecont.simg 
+jupyter-lab --no-browser --allow-root --ip=0.0.0.0 --port=8888 --NotebookApp.token="" --notebook-dir=/workspace
+
+```
+ 
+ The `-B` flag mounts local directories in the container filesystem and ensures changes are stored locally in the project folder. Open jupyter lab in the browser: http://localhost:8888
+
+You may start working on the labs by clicking the `start_here.ipynb` notebook.
+
+When you finish these notebooks, shut down jupyter lab by selecting `File > Shut Down` in the top left corner, then shut down the Singularity container by typing `exit` or pressing `ctrl + d` in the terminal window.
+
+
+
+
+## Known issues
+
